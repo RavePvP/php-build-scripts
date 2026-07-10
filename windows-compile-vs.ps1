@@ -21,6 +21,7 @@ $LIBSNAPPY_VER="1.2.2"
 $PHP_PMMPTHREAD_VER="6.3.0"
 $PHP_YAML_VER="2.3.0"
 $PHP_CHUNKUTILS2_VER="0.3.5"
+$PHP_PATHFINDER_VER="132f6c13d864bc7b48521555b9bd8cbd2706cb4c"
 $PHP_IGBINARY_VER="3.2.16"
 $PHP_LEVELDB_VER="88071eb1b1eae96af043229104b9d813f7cbe40c" #release not tagged
 $PHP_CRYPTO_VER="999b3c7edbc7f8ca4fdeb0bb4bbae488ad0daf07" #release not tagged
@@ -307,6 +308,7 @@ function create-extension-directories {
     $directories = @(
         "TSRM", "Zend", "Zend\Optimizer", "ext", "ext\bcmath", "ext\bcmath\libbcmath", "ext\bcmath\libbcmath\src",
         "ext\bz2", "ext\calendar", "ext\chunkutils2", "ext\chunkutils2\src", "ext\crypto", "ext\ctype",
+        "ext\ext-pathfinder-$PHP_PATHFINDER_VER", "ext\ext-pathfinder-$PHP_PATHFINDER_VER\src",
         "ext\curl", "ext\date", "ext\date\lib", "ext\dom", "ext\dom\lexbor", "ext\dom\lexbor\selectors-adapted",
         "ext\dom\parentnode", "ext\ext-arraydebug-0.2.1", "ext\ext-encoding-1.0.0", "ext\ext-encoding-1.0.0\classes",
         "ext\ext-libdeflate-0.2.1", "ext\ext-pmmpthread-4aa34a27feaa43adba5f1e93939828d1d7afdefc",
@@ -681,6 +683,7 @@ function download-php-extensions {
     get-github-extension "vanillagenerator"      $PHP_VANILLAGENERATOR_VER      "NetherGamesMC" "ext-vanillagenerator"
     get-github-extension "yaml"                  $PHP_YAML_VER                  "php"      "pecl-file_formats-yaml"
     get-github-extension "chunkutils2"           $PHP_CHUNKUTILS2_VER           "pmmp"     "ext-chunkutils2"
+    get-github-extension "pathfinder"            $PHP_PATHFINDER_VER            "TrixNEW"  "ext-pathfinder"
     get-github-extension "igbinary"              $PHP_IGBINARY_VER              "igbinary" "igbinary"
     get-github-extension "leveldb"               $PHP_LEVELDB_VER               "pmmp"     "php-leveldb"
     get-github-extension "recursionguard"        $PHP_RECURSIONGUARD_VER        "pmmp"     "ext-recursionguard"
@@ -791,6 +794,7 @@ sdk-command "configure^`
     --enable-bcmath^`
     --enable-calendar^`
     --enable-chunkutils2=shared^`
+    --enable-pathfinder=shared^`
     --enable-com-dotnet^`
     --enable-ctype^`
     --enable-encoding=shared^`
@@ -895,6 +899,7 @@ append-file-utf8 "extension_dir=ext" $php_ini
 append-file-utf8 "extension=php_pmmpthread.dll" $php_ini
 append-file-utf8 "extension=php_openssl.dll" $php_ini
 append-file-utf8 "extension=php_chunkutils2.dll" $php_ini
+append-file-utf8 "extension=php_pathfinder.dll" $php_ini
 append-file-utf8 "extension=php_igbinary.dll" $php_ini
 append-file-utf8 "extension=php_leveldb.dll" $php_ini
 append-file-utf8 "extension=php_crypto.dll" $php_ini
