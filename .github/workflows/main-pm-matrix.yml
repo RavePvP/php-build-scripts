@@ -4,15 +4,15 @@ on:
   workflow_call:
     inputs:
       pm-version-major:
-        description: 'PocketMine-MP major version'
+        description: "PocketMine-MP major version"
         required: true
         type: number
       php-version-base:
-        description: 'PHP base version'
+        description: "PHP base version"
         required: true
         type: string
       special-release:
-        description: 'Special release type to create (pm-default-latest, pm-default, none)'
+        description: "Special release type to create (default-latest, default, none)"
         required: true
         type: string
       pm-preview:
@@ -37,28 +37,37 @@ jobs:
       - name: Install tools and dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install make autoconf automake libtool libtool-bin m4 wget libc-bin gzip bzip2 bison g++ git re2c \
-            cmake golang-go perl pkg-config libclang-dev clang
+          sudo apt-get install -y \
+            make autoconf automake libtool libtool-bin m4 wget libc-bin gzip \
+            bzip2 bison g++ git re2c cmake golang-go perl pkg-config \
+            libclang-dev clang
 
       - name: Prepare compile.sh download cache
-        id: download-cache
         uses: actions/cache@v4
         with:
           path: ./download_cache
           key: compile-sh-cache-ssl-https-${{ hashFiles('./compile.sh') }}
-          restore-keys: compile-sh-cache-ssl-https-
+          restore-keys: |
+            compile-sh-cache-ssl-https-
 
       - name: Compile PHP
         run: |
-          # Used "set -ex" instead of hashbang since script isn't executed with hashbang
           set -ex
           trap "exit 1" ERR
-          ./compile.sh -t linux64 -j 4 -g -F -P ${{ inputs.pm-version-major }} -c ./download_cache -D -z ${{ inputs.php-version-base }}
+          ./compile.sh \
+            -t linux64 \
+            -j 4 \
+            -g \
+            -F \
+            -P ${{ inputs.pm-version-major }} \
+            -c ./download_cache \
+            -D \
+            -z ${{ inputs.php-version-base }}
 
-      - name: Create tarball
+      - name: Create tarballs
         run: |
-          tar -czf ./PHP-${{ inputs.php-version-base }}-Linux-x86_64-PM${{ inputs.pm-version-major }}.tar.gz bin
-          tar -czf ./Z-PHP-${{ inputs.php-version-base }}-Linux-x86_64-PM${{ inputs.pm-version-major }}-debugging-symbols.tar.gz bin-debug
+          tar -czf "./PHP-${{ inputs.php-version-base }}-Linux-x86_64-PM${{ inputs.pm-version-major }}.tar.gz" bin
+          tar -czf "./Z-PHP-${{ inputs.php-version-base }}-Linux-x86_64-PM${{ inputs.pm-version-major }}-debugging-symbols.tar.gz" bin-debug
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
@@ -80,87 +89,45 @@ jobs:
         if: failure()
         with:
           name: PHP-${{ inputs.php-version-base }}-Linux-workspace-PM${{ inputs.pm-version-major }}
-          path: |
-            workspace.tar.gz
+          path: workspace.tar.gz
           if-no-files-found: error
-
-  windows:
-    name: Windows
-    runs-on: windows-2022
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Prepare download cache
-        id: download-cache
-        uses: actions/cache@v4
-        with:
-          path: ./download_cache
-          key: windows-cache-${{ hashFiles('./windows-compile-vs.ps1') }}
-          restore-keys: windows-cache-
-
-      - name: Compile PHP
-        run: .\windows-compile-vs.ps1
-        env:
-          SOURCES_PATH: ${{ github.workspace }}\pocketmine-php-sdk
-          PM_VERSION_MAJOR: ${{ inputs.pm-version-major }}
-          PHP_VERSION_BASE: ${{ inputs.php-version-base }}
-
-      - name: Prepare artifacts
-        run: |
-          mkdir temp
-          Compress-Archive -Path .\bin -DestinationPath "PHP-${{ inputs.php-version-base }}-Windows-x64-PM${{ inputs.pm-version-major }}.zip"
-          move php-debug-pack-*.zip temp/Z-PHP-${{ inputs.php-version-base }}-Windows-x64-PM${{ inputs.pm-version-major }}-debugging-symbols.zip
-          move temp\*.zip .
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v5
-        if: always()
-        with:
-          name: PHP-${{ inputs.php-version-base }}-Windows-PM${{ inputs.pm-version-major }}
-          path: |
-            *PHP-${{ inputs.php-version-base }}-Windows-x64-PM${{ inputs.pm-version-major }}*.zip
-            compile.log
-            windows-compile-vs.bat
-          if-no-files-found: error
-
 
   publish:
     name: Publish binaries
-    needs: [linux, windows]
+    needs:
+      - linux
     runs-on: ubuntu-24.04
     if: ${{ github.ref_name == 'stable' && github.ref_type == 'branch' && !contains(github.event.head_commit.message, '[no release]') }}
     concurrency: release-${{ inputs.php-version-base }}-pm${{ inputs.pm-version-major }}
-
     permissions:
       contents: write
 
     steps:
       - uses: actions/checkout@v5
 
-      - name: Update latest tag target
+      - name: Update latest tag targets
         run: |
-          git tag -f pm${{ inputs.pm-version-major }}-php-${{ inputs.php-version-base }}-latest
-          git push -f origin pm${{ inputs.pm-version-major }}-php-${{ inputs.php-version-base }}-latest
-          git tag -f pm${{ inputs.pm-version-major }}-latest
-          git push -f origin pm${{ inputs.pm-version-major }}-latest
+          git tag -f "pm${{ inputs.pm-version-major }}-php-${{ inputs.php-version-base }}-latest"
+          git push -f origin "pm${{ inputs.pm-version-major }}-php-${{ inputs.php-version-base }}-latest"
+          git tag -f "pm${{ inputs.pm-version-major }}-latest"
+          git push -f origin "pm${{ inputs.pm-version-major }}-latest"
 
-      - name: Download artifacts
+      - name: Download Linux artifacts
         uses: actions/download-artifact@v6
         with:
           path: ${{ github.workspace }}
-          pattern: "*PHP-${{ inputs.php-version-base }}-*-PM${{ inputs.pm-version-major }}"
+          pattern: "*PHP-${{ inputs.php-version-base }}-Linux-PM${{ inputs.pm-version-major }}"
 
       - name: Download .gdbinit for this PHP version
         run: |
-          curl -L https://raw.githubusercontent.com/php/php-src/refs/heads/PHP-${{ inputs.php-version-base }}/.gdbinit -o Z-PHP-${{ inputs.php-version-base }}.gdbinit
+          curl -L "https://raw.githubusercontent.com/php/php-src/refs/heads/PHP-${{ inputs.php-version-base }}/.gdbinit" \
+            -o "Z-PHP-${{ inputs.php-version-base }}.gdbinit"
 
       - name: Upload .gdbinit artifact
         uses: actions/upload-artifact@v5
         with:
           name: PHP-${{ inputs.php-version-base }}.gdbinit
-          path: |
-            ${{ github.workspace }}/*.gdbinit
+          path: ${{ github.workspace }}/*.gdbinit
 
       - name: Generate release notes
         run: |
@@ -171,29 +138,26 @@ jobs:
           echo "Build number: ${{ github.run_number }}" >> changelog.md
           echo -e "\n\n\n" >> changelog.md
           echo ":information_source: **Linux/MacOS users**: Please see [this page](https://doc.pmmp.io/en/rtfd/faq/installation/opcache.so.html) to fix extension loading errors. Also, check out the [PocketMine-MP Linux/MacOS installer](https://doc.pmmp.io/en/rtfd/installation/get-dot-pmmp-dot-io.html)." >> changelog.md
-          echo ":warning: **Windows users**: Don't forget to install [Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe) or the binary will not work!" >> changelog.md
           echo -e "\n\n\n" >> changelog.md
 
           if [[ "${{ inputs.special-release }}" != "none" ]]; then
             echo ":white_check_mark: At the time of publication, this version is recommended for PocketMine-MP ${{ inputs.pm-version-major }}.x production servers." >> changelog.md
           else
             echo ":warning: WARNING! :warning:" >> changelog.md
-            echo "At the time of publication, plugins for PocketMine-MP ${{ inputs.pm-version-major }}.x may not work this PHP version." >> changelog.md
+            echo "At the time of publication, plugins for PocketMine-MP ${{ inputs.pm-version-major }}.x may not work with this PHP version." >> changelog.md
             echo "If you have problems, try the [recommended PM${{ inputs.pm-version-major }} release](${{ github.server_url }}/${{ github.repository }}/releases/pm${{ inputs.pm-version-major }}-latest) instead." >> changelog.md
           fi
 
       - name: Get date
         id: date
-        run: |
-          echo DATE=$(date -u +'%d %b %Y') >> $GITHUB_OUTPUT
+        run: echo "DATE=$(date -u +'%d %b %Y')" >> "$GITHUB_OUTPUT"
 
       - name: Update recommended PM release
         uses: ncipollo/release-action@v1.20.0
         if: ${{ inputs.special-release != 'none' }}
         with:
           artifacts: |
-            ${{ github.workspace }}/*PHP-*-PM*/*.tar.gz
-            ${{ github.workspace }}/*PHP-*-Windows-PM*/*.zip
+            ${{ github.workspace }}/*PHP-*-Linux-PM*/*.tar.gz
             ${{ github.workspace }}/*.gdbinit
           name: PM ${{ inputs.pm-version-major }}.x (${{ steps.date.outputs.DATE }}) - Recommended
           tag: pm${{ inputs.pm-version-major }}-latest
@@ -202,14 +166,13 @@ jobs:
           removeArtifacts: true
           bodyFile: ${{ github.workspace }}/changelog.md
           makeLatest: ${{ inputs.special-release == 'default-latest' }}
-          prerelease: ${{ inputs.pm-preview == true }}
+          prerelease: ${{ inputs.pm-preview }}
 
-      - name: Update php-version PM release
+      - name: Update PHP-version PM release
         uses: ncipollo/release-action@v1.20.0
         with:
           artifacts: |
-            ${{ github.workspace }}/*PHP-*-PM*/*.tar.gz
-            ${{ github.workspace }}/*PHP-*-Windows-PM*/*.zip
+            ${{ github.workspace }}/*PHP-*-Linux-PM*/*.tar.gz
             ${{ github.workspace }}/*.gdbinit
           name: PM ${{ inputs.pm-version-major }}.x (${{ steps.date.outputs.DATE }}) - PHP ${{ inputs.php-version-base }}
           tag: pm${{ inputs.pm-version-major }}-php-${{ inputs.php-version-base }}-latest
@@ -218,5 +181,4 @@ jobs:
           removeArtifacts: true
           bodyFile: ${{ github.workspace }}/changelog.md
           makeLatest: false
-          prerelease: ${{ inputs.pm-preview == true }}
-
+          prerelease: ${{ inputs.pm-preview }}
