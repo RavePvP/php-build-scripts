@@ -46,15 +46,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ./download_cache
-          key: compile-sh-cache-ssl-https-${{ hashFiles('./compile.sh') }}
+          key: compile-sh-cache-native-${{ hashFiles('./compile.sh', './compile-native.sh') }}
           restore-keys: |
+            compile-sh-cache-native-
             compile-sh-cache-ssl-https-
 
       - name: Compile PHP
         run: |
           set -ex
           trap "exit 1" ERR
-          ./compile.sh \
+          bash ./compile-native.sh \
             -t linux64 \
             -j 4 \
             -g \
@@ -63,6 +64,24 @@ jobs:
             -c ./download_cache \
             -D \
             -z ${{ inputs.php-version-base }}
+
+      - name: Verify native extensions
+        run: |
+          ./bin/php7/bin/php -r '
+            foreach (["ext_math", "ext_nbt", "pathfinder"] as $extension) {
+              if (!extension_loaded($extension)) {
+                fwrite(STDERR, "Missing required extension: {$extension}\n");
+                exit(1);
+              }
+            }
+            foreach (["pocketmine\\math\\Vector3", "pocketmine\\nbt\\tag\\CompoundTag", "pathfinder\\NavMesh"] as $class) {
+              $reflection = new ReflectionClass($class);
+              if (!$reflection->isInternal()) {
+                fwrite(STDERR, "Expected internal class: {$class}\n");
+                exit(1);
+              }
+            }
+          '
 
       - name: Create tarballs
         run: |
@@ -78,6 +97,7 @@ jobs:
             ./*PHP-${{ inputs.php-version-base }}-Linux-x86_64-PM${{ inputs.pm-version-major }}*.tar.gz
             install.log
             compile.sh
+            compile-native.sh
           if-no-files-found: error
 
       - name: Prepare workspace for upload
