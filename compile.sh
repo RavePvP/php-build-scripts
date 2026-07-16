@@ -31,7 +31,9 @@ EXT_PMMPTHREAD_VERSION="de0d03b6ffecb1a03c06bb47912c2257c0b02b65"
 EXT_YAML_VERSION="2.3.0"
 EXT_LEVELDB_VERSION="88071eb1b1eae96af043229104b9d813f7cbe40c" #release not tagged
 EXT_CHUNKUTILS2_VERSION="0.3.5"
-EXT_PATHFINDER_VERSION="132f6c13d864bc7b48521555b9bd8cbd2706cb4c"
+EXT_PATHFINDER_VERSION="4f62992e518bd2fc8797103b5a7e3690166b074b"
+EXT_MATH_VERSION="ceee39ac0ece476accaa09e58aeb70f66276b6c7"
+EXT_NBT_VERSION="099ccb67c57fc0893b2c388f89f363f89f389a51"
 EXT_XDEBUG_VERSION="3.5.0"
 EXT_IGBINARY_VERSION="3.2.16"
 EXT_CRYPTO_VERSION="999b3c7edbc7f8ca4fdeb0bb4bbae488ad0daf07" #release not tagged
@@ -1464,7 +1466,9 @@ get_github_extension "leveldb" "$EXT_LEVELDB_VERSION" "pmmp" "php-leveldb"
 
 get_github_extension "chunkutils2" "$EXT_CHUNKUTILS2_VERSION" "pmmp" "ext-chunkutils2"
 
-get_github_extension "pathfinder" "$EXT_PATHFINDER_VERSION" "TrixNEW" "ext-pathfinder"
+get_github_extension "pathfinder" "$EXT_PATHFINDER_VERSION" "RavePvP" "ext-pathfinder"
+get_github_extension "ext_math" "$EXT_MATH_VERSION" "phpMine-MP" "ext-math"
+get_github_extension "ext_nbt" "$EXT_NBT_VERSION" "phpMine-MP" "ext-nbt"
 
 get_github_extension "libdeflate" "$EXT_LIBDEFLATE_VERSION" "pmmp" "ext-libdeflate"
 
@@ -1701,6 +1705,8 @@ $HAS_FFI \
 $HAS_DEBUG \
 --enable-chunkutils2 \
 --enable-pathfinder \
+--enable-ext-math \
+--enable-ext-nbt \
 --enable-morton \
 --enable-mbstring \
 --disable-mbregex \
