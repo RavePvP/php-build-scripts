@@ -1,9 +1,6 @@
 name: Promote native extensions into compile.sh
 
 on:
-  push:
-    branches:
-      - agent/native-math-nbt
   pull_request:
     branches:
       - stable
@@ -13,70 +10,52 @@ permissions:
 
 jobs:
   promote:
-    if: ${{ (github.event_name == 'push' && github.ref_name == 'agent/native-math-nbt') || (github.event_name == 'pull_request' && github.head_ref == 'agent/native-math-nbt') }}
+    if: ${{ github.head_ref == 'agent/native-math-nbt' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:
           ref: agent/native-math-nbt
 
-      - name: Patch the canonical build script and workflow
+      - name: Patch and commit compile.sh
         run: |
           python3 <<'PY'
           from pathlib import Path
 
-          compile_path = Path('compile.sh')
-          text = compile_path.read_text()
-          replacements = [
+          path = Path('compile.sh')
+          text = path.read_text()
+
+          changes = [
               (
-                  'EXT_PATHFINDER_VERSION="132f6c13d864bc7b48521555b9bd8cbd2706cb4c"\n',
+                  'EXT_PATHFINDER_VERSION="132f6c13d864bc7b48521555b9bd8cbd2706cb4c"',
                   'EXT_PATHFINDER_VERSION="4f62992e518bd2fc8797103b5a7e3690166b074b"\n'
                   'EXT_MATH_VERSION="ceee39ac0ece476accaa09e58aeb70f66276b6c7"\n'
-                  'EXT_NBT_VERSION="099ccb67c57fc0893b2c388f89f363f89f389a51"\n',
+                  'EXT_NBT_VERSION="099ccb67c57fc0893b2c388f89f363f89f389a51"',
               ),
               (
-                  'get_github_extension "pathfinder" "$EXT_PATHFINDER_VERSION" "TrixNEW" "ext-pathfinder"\n',
+                  'get_github_extension "pathfinder" "$EXT_PATHFINDER_VERSION" "TrixNEW" "ext-pathfinder"',
                   'get_github_extension "pathfinder" "$EXT_PATHFINDER_VERSION" "RavePvP" "ext-pathfinder"\n'
                   'get_github_extension "ext_math" "$EXT_MATH_VERSION" "phpMine-MP" "ext-math"\n'
-                  'get_github_extension "ext_nbt" "$EXT_NBT_VERSION" "phpMine-MP" "ext-nbt"\n',
+                  'get_github_extension "ext_nbt" "$EXT_NBT_VERSION" "phpMine-MP" "ext-nbt"',
               ),
               (
-                  '--enable-pathfinder \\\n',
-                  '--enable-pathfinder \\\n--enable-ext-math \\\n--enable-ext-nbt \\\n',
+                  '--enable-pathfinder \\\n--enable-morton',
+                  '--enable-pathfinder \\\n--enable-ext-math \\\n--enable-ext-nbt \\\n--enable-morton',
               ),
           ]
-          for old, new in replacements:
-              if old not in text:
-                  raise SystemExit(f'Missing compile.sh anchor: {old!r}')
+
+          for old, new in changes:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected one compile.sh anchor, found {count}: {old!r}')
               text = text.replace(old, new, 1)
-          compile_path.write_text(text)
 
-          matrix_path = Path('.github/workflows/main-pm-matrix.yml')
-          matrix = matrix_path.read_text()
-          matrix_replacements = [
-              ("hashFiles('./compile.sh', './compile-native.sh')", "hashFiles('./compile.sh')"),
-              ('bash ./compile-native.sh \\\n', 'bash ./compile.sh \\\n'),
-              ('            compile-native.sh\n', ''),
-          ]
-          for old, new in matrix_replacements:
-              if old not in matrix:
-                  raise SystemExit(f'Missing workflow anchor: {old!r}')
-              matrix = matrix.replace(old, new, 1)
-          matrix_path.write_text(matrix)
-
-          main_path = Path('.github/workflows/main.yml')
-          main = main_path.read_text()
-          start_marker = '  # BEGIN TEMP NATIVE PROMOTION\n'
-          end_marker = '  # END TEMP NATIVE PROMOTION\n'
-          if start_marker in main:
-              start = main.index(start_marker)
-              end = main.index(end_marker, start) + len(end_marker)
-              main_path.write_text(main[:start] + main[end:])
+          path.write_text(text)
           PY
 
+          git diff --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git rm -f --ignore-unmatch compile-native.sh .github/workflows/promote-native-extensions.yml
-          git add compile.sh .github/workflows/main-pm-matrix.yml .github/workflows/main.yml
+          git add compile.sh
           git commit -m 'Build native Math, NBT and pathfinder directly [native compile promoted]'
           git push origin HEAD:agent/native-math-nbt
