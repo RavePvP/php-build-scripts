@@ -46,15 +46,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ./download_cache
-          key: compile-sh-cache-ssl-https-${{ hashFiles('./compile.sh') }}
+          key: compile-sh-cache-native-${{ hashFiles('./compile.sh') }}
           restore-keys: |
+            compile-sh-cache-native-
             compile-sh-cache-ssl-https-
 
       - name: Compile PHP
         run: |
           set -ex
           trap "exit 1" ERR
-          ./compile.sh \
+          bash ./compile.sh \
             -t linux64 \
             -j 4 \
             -g \
@@ -63,6 +64,9 @@ jobs:
             -c ./download_cache \
             -D \
             -z ${{ inputs.php-version-base }}
+
+      - name: Verify native extensions
+        run: ./bin/php7/bin/php verify-native.php
 
       - name: Create tarballs
         run: |
@@ -78,6 +82,7 @@ jobs:
             ./*PHP-${{ inputs.php-version-base }}-Linux-x86_64-PM${{ inputs.pm-version-major }}*.tar.gz
             install.log
             compile.sh
+            verify-native.php
           if-no-files-found: error
 
       - name: Prepare workspace for upload
@@ -141,7 +146,7 @@ jobs:
           echo -e "\n\n\n" >> changelog.md
 
           if [[ "${{ inputs.special-release }}" != "none" ]]; then
-            echo ":white_check_mark: At the time of publication, this version is recommended for PocketMine-MP ${{ inputs.pm-version-major }}.x production servers." >> changelog.md
+            echo ":white_check_mark: **At the time of publication, this version is recommended for PocketMine-MP ${{ inputs.pm-version-major }}.x production servers.**" >> changelog.md
           else
             echo ":warning: WARNING! :warning:" >> changelog.md
             echo "At the time of publication, plugins for PocketMine-MP ${{ inputs.pm-version-major }}.x may not work with this PHP version." >> changelog.md
