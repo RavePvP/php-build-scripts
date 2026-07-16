@@ -20,7 +20,7 @@ import sys
 path = Path(sys.argv[1])
 text = path.read_text()
 
-pathfinder_sha = "a575664430d2725f84689cb4a80dfa9f82218c85"
+pathfinder_sha = "4f62992e518bd2fc8797103b5a7e3690166b074b"
 math_sha = "ceee39ac0ece476accaa09e58aeb70f66276b6c7"
 nbt_sha = "099ccb67c57fc0893b2c388f89f363f89f389a51"
 
